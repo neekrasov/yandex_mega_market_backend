@@ -1,3 +1,5 @@
+from collections import Counter
+
 from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.exceptions import ValidationError as RestValidationError
@@ -26,6 +28,11 @@ class ShopUnitImportView(CreateAPIView):
 
         if not items:
             return custom_response(status_code=HTTP_400_BAD_REQUEST, message="ValidationError : Items list is empty")
+        else:
+            new_items = [item["id"] for item in items]
+            for counts in Counter(new_items).values():
+                if counts > 1: return custom_response(status_code=HTTP_400_BAD_REQUEST,
+                                                      message="ValidationError : Duplicate id in request")
 
         for item in items:
             item.update({'date': updateDate})
