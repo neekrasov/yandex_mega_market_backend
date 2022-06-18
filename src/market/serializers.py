@@ -36,40 +36,50 @@ class ShopUnitImportSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError()
         return shop_unit
 
-    def validate_parentId(self, value):
-        value = ShopUnit.objects.get_unit_or_none(id=value)
-        if value:
-            if value.type == 'OFFER':
-                raise serializers.ValidationError()
-        else:
-            return None
-        return value.id
-
-    def validate_price(self, value):
-        unit_type = self.context['request'].data["items"][0].get('type')
-        if unit_type == 'OFFER':
-            if value is None:
-                raise serializers.ValidationError()
-            elif value < 0:
-                raise serializers.ValidationError()
-        if unit_type == 'CATEGORY' and value is not None:
-            raise serializers.ValidationError()
+    def validate(self, value):
+        self._validate_parentId(value['parentId'])
+        self._validate_price(value['price'], value["type"])
+        self._validate_date(value['date'])
+        self._validate_name(value['name'], value["id"])
         return value
 
-    def validate_date(self, value):
+    def _validate_parentId(self, value):
+        unit = ShopUnit.objects.get_unit_or_none(id=value)
+        if unit:
+            if unit.type == 'OFFER':
+                print("failed _validate_parentId")
+                raise serializers.ValidationError()
+        else:
+            if value is not None:
+                print("failed _validate_parentId")
+                raise serializers.ValidationError()
+
+    def _validate_price(self, value, type):
+        if type == 'OFFER':
+            if value is None:
+                print(" failed _validate_price")
+                raise serializers.ValidationError()
+            elif value < 0:
+                print(" failed _validate_price")
+                raise serializers.ValidationError()
+        if type == 'CATEGORY' and value is not None:
+            print(" failed _validate_price")
+            raise serializers.ValidationError()
+
+    def _validate_date(self, value):
         try:
             datetime.datetime.strptime(value, '%Y-%m-%dT%H:%M:%S.%fZ')
         except ValueError:
+            print("failed _validate_date")
             raise serializers.ValidationError()
-        return value
 
-    def validate_name(self, value):
-        if ShopUnit.objects.get_unit_or_none(id=self.context['request'].data["items"][0].get("id")):
+    def _validate_name(self, value, id):
+        if ShopUnit.objects.get_unit_or_none(id=id):
             return value
         else:
             if ShopUnit.objects.get_unit_or_none(name=value):
+                print("failed _validate_name")
                 raise serializers.ValidationError()
-        return value
 
 
 class ShopUnitDetailSerializer(serializers.ModelSerializer):
