@@ -4,7 +4,7 @@ from drf_yasg.views import get_schema_view
 from rest_framework import permissions
 
 from src.market import views
-from src.market.views import delete_shop_unit, ShopUnitDetailView
+from src.market.views import delete_shop_unit, ShopUnitDetailView, ShopUnitSalesView
 
 schema_view = get_schema_view(
     openapi.Info(
@@ -23,4 +23,5 @@ urlpatterns = [
     path('imports/', views.ShopUnitImportView.as_view()),
     path('delete/<str:id>', delete_shop_unit),
     path('nodes/<str:pk>', ShopUnitDetailView.as_view()),
+    path('sales/', ShopUnitSalesView.as_view()),
 ]
