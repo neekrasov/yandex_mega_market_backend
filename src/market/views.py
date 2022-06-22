@@ -1,16 +1,17 @@
-from collections import Counter
+from datetime import timedelta, datetime
 
+from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.exceptions import ValidationError as RestValidationError
-from django.core.exceptions import ValidationError as DjangoValidationError
-from rest_framework.generics import CreateAPIView, RetrieveAPIView
+from rest_framework.generics import CreateAPIView, RetrieveAPIView, ListAPIView
 from rest_framework.response import Response
 from rest_framework.status import HTTP_400_BAD_REQUEST, HTTP_404_NOT_FOUND
 
 from src.market.models import ShopUnit
-from src.market.serializers import ShopUnitImportSerializer, ShopUnitDetailSerializer
+from src.market.serializers import ShopUnitImportSerializer, ShopUnitDetailSerializer, ShopUnitSalesSerializer
 from src.services.response_status_codes import custom_response
+from src.services.services import price_calculation
 
 
 class ShopUnitImportView(CreateAPIView):
@@ -20,39 +21,60 @@ class ShopUnitImportView(CreateAPIView):
     def create(self, request, *args, **kwargs):
         updateDate = request.data.get('updateDate')
 
+        # Валидация на наличие обязательного поля updateDate.
         if not updateDate:
             return custom_response(status_code=HTTP_400_BAD_REQUEST,
-                                   message="ValidationError : update date was not sent")
+                                   message="ValidationError : Update date was not sent")
 
         items = request.data.get('items', [])
 
+        # Валидация пустого списка items, дублирования id и name.
         if not items:
             return custom_response(status_code=HTTP_400_BAD_REQUEST, message="ValidationError : Items list is empty")
         else:
-            new_items = [item["id"] for item in items]
-            for counts in Counter(new_items).values():
-                if counts > 1: return custom_response(status_code=HTTP_400_BAD_REQUEST,
-                                                      message="ValidationError : Duplicate id in request")
+            duplicates = dict()
+            for item in items:
+                duplicates[item['id']] = duplicates.get(item['id'], 0) + 1
+                if duplicates[item['id']] > 1:
+                    return custom_response(status_code=HTTP_400_BAD_REQUEST,
+                                           message="ValidationError: Dubplicate 'id' field")
+                duplicates[item['name']] = duplicates.get(item['name'], 0) + 1
+                if duplicates[item['name']] > 1:
+                    return custom_response(status_code=HTTP_400_BAD_REQUEST,
+                                           message="ValidationError: Dubplicate 'name' field")
+                # Обновление даты для каждого юнита.
+                item.update({'date': updateDate})
 
-        for item in items:
-            item.update({'date': updateDate})
-
+        # Передача данных в сериализатор - валидация.
         serializer = self.get_serializer(data=items, many=True)
         try:
             serializer.is_valid(raise_exception=True)
         except RestValidationError as e:
             print(e)
-            return custom_response(status_code=HTTP_400_BAD_REQUEST, message="Validation Error")
+            return custom_response(status_code=HTTP_400_BAD_REQUEST, message=f"Validation Error: {e}")
 
+        # Сохранение данных
         self.perform_create(serializer)
         headers = self.get_success_headers(serializer.data)
 
-        return Response(serializer.data, status=status.HTTP_200_OK, headers=headers)
+        # Перерасчёт поля price у категорий.
+        changed_categories = set(
+            ShopUnit.objects.get_unit_or_none(
+                id=unit["parentId"]) for unit in items if unit["parentId"] is not None)
+        for category_id in changed_categories:
+            price_calculation(category_id)
+
+        return Response(status=status.HTTP_200_OK, headers=headers)
 
 
 class ShopUnitDetailView(RetrieveAPIView):
     serializer_class = ShopUnitDetailSerializer
     queryset = ShopUnit.objects.all()
+
+
+class ShopUnitSalesView(ListAPIView):
+    serializer_class = ShopUnitSalesSerializer
+    queryset = ShopUnit.objects.filter(date__gte=datetime.now() - timedelta(hours=24), type="OFFER")
 
 
 @api_view(http_method_names=['DELETE'])
@@ -65,4 +87,5 @@ def delete_shop_unit(request, *args, **kwargs):
         return custom_response(status_code=HTTP_404_NOT_FOUND, message="Item not found")
     unit.delete()  # CASCADE
 
+    price_calculation(unit.parentId)
     return Response(200)
