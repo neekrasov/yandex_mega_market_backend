@@ -1,9 +1,8 @@
-from abc import ABC
-
 from django.db import IntegrityError
 from rest_framework import serializers
 
 from src.market.models import ShopUnit
+from src.services import exceptions
 from src.services.services import price_calculation
 from src.services.validators import validate_parentId, validate_price, validate_date, validate_name
 
@@ -42,7 +41,7 @@ class ShopUnitImportSerializer(serializers.Serializer):
             try:
                 shop_unit = ShopUnit.objects.create(**validated_data)
             except IntegrityError:
-                raise serializers.ValidationError()
+                raise exceptions.ValidationError()
         return shop_unit
 
     def validate(self, unit):
@@ -77,9 +76,3 @@ class ShopUnitDetailSerializer(serializers.ModelSerializer):
         if unit.type == 'CATEGORY':
             representation_data.update({'children': [self.get_representation_data(child) for child in children]})
         return representation_data
-
-
-class ShopUnitSalesSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = ShopUnit
-        fields = ('id', 'name', 'date', 'type', 'price', 'parentId')

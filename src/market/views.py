@@ -1,17 +1,19 @@
-from datetime import timedelta, datetime
+from datetime import timedelta
 
 from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import status
 from rest_framework.decorators import api_view
-from rest_framework.exceptions import ValidationError as RestValidationError
 from rest_framework.generics import CreateAPIView, RetrieveAPIView, ListAPIView
 from rest_framework.response import Response
 from rest_framework.status import HTTP_400_BAD_REQUEST, HTTP_404_NOT_FOUND
 
 from src.market.models import ShopUnit
-from src.market.serializers import ShopUnitImportSerializer, ShopUnitDetailSerializer, ShopUnitSalesSerializer
+from src.market.serializers import ShopUnitImportSerializer, ShopUnitDetailSerializer, ShopUnitSalesSerializer, \
+    ShopUnitSerializer
+from src.services import exceptions
 from src.services.response_status_codes import custom_response
 from src.services.services import price_calculation
+from src.services.validators import validate_date
 
 
 class ShopUnitImportView(CreateAPIView):
@@ -49,8 +51,7 @@ class ShopUnitImportView(CreateAPIView):
         serializer = self.get_serializer(data=items, many=True)
         try:
             serializer.is_valid(raise_exception=True)
-        except RestValidationError as e:
-            print(e)
+        except exceptions.ValidationError as e:
             return custom_response(status_code=HTTP_400_BAD_REQUEST, message=f"Validation Error: {e}")
 
         # Сохранение данных
@@ -73,8 +74,12 @@ class ShopUnitDetailView(RetrieveAPIView):
 
 
 class ShopUnitSalesView(ListAPIView):
-    serializer_class = ShopUnitSalesSerializer
-    queryset = ShopUnit.objects.filter(date__gte=datetime.now() - timedelta(hours=24), type="OFFER")
+    serializer_class = ShopUnitSerializer
+
+    def get_queryset(self):
+        query = self.request.GET['date']
+        date = validate_date(query)
+        return ShopUnit.objects.filter(date__gte=date - timedelta(hours=24), type="OFFER")
 
 
 @api_view(http_method_names=['DELETE'])

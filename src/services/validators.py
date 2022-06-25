@@ -1,28 +1,28 @@
 from datetime import datetime
 
-from rest_framework import serializers
-
 from src.market.models import ShopUnit
+from src.services import exceptions
 
 
 def validate_parentId(parent_id):
     unit = ShopUnit.objects.get_unit_or_none(id=parent_id)
     if unit and (unit.type == 'OFFER' or unit == parent_id):
-        raise serializers.ValidationError("failed _validate_parentId")
+        raise exceptions.ValidationError("failed parentId")
 
 
 def validate_price(price, type):
     if type == 'OFFER' and (price is None or price < 0):
-        raise serializers.ValidationError("failed _validate_price, price is none or price<0")
+        raise exceptions.ValidationError("price must be >= 0")
     if type == 'CATEGORY' and price is not None:
-        raise serializers.ValidationError("failed _validate_price, price is no Null")
+        raise exceptions.ValidationError("price must be null")
 
 
 def validate_date(value):
     try:
-        datetime.strptime(value, '%Y-%m-%dT%H:%M:%S.%fZ')
+        date = datetime.strptime(value, '%Y-%m-%dT%H:%M:%S.%fZ')
     except ValueError:
-        raise serializers.ValidationError("failed _validate_date")
+        raise exceptions.ValidationError("date parse failed")
+    return date
 
 
 def validate_name(name, unit):
@@ -31,4 +31,4 @@ def validate_name(name, unit):
     if unit and unit == another_unit:
         return
     if another_unit:
-        raise serializers.ValidationError('name failed')
+        raise exceptions.ValidationError('unit with the same name already exists')
