@@ -21,12 +21,12 @@ services:
     restart: always
     command: bash entrypoint.sh
     volumes:
-      - ./src/market/migrations:./src/market/migrations
+      - ./src/market/migrations:/usr/src/yandex_backend/src/market/migrations
       - ./static:/usr/src/yandex_backend/static
     ports:
       - '8000:8000'
     env_file:
-      - .env
+      - ./.env
     depends_on:
       - db
 

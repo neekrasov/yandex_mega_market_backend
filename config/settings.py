@@ -15,14 +15,19 @@ except EnvValidationError:
 
 
 try:
-    DEBUG = env.str("DJANGO_DEBUG")
+    DEBUG = env.int("DJANGO_DEBUG")
 except EnvValidationError:
-    DEBUG = os.environ['DJANGO_DEBUG']
+    DEBUG = int(os.environ['DJANGO_DEBUG'])
 
 try:
     ALLOWED_HOSTS = env.list("ALLOWED_HOSTS")
 except EnvValidationError:
     ALLOWED_HOSTS = os.environ['ALLOWED_HOSTS'].split(',')
+try:
+    CSRF_TRUSTED_ORIGINS = env.list("CSRF_TRUSTED_ORIGINS")
+except EnvValidationError:
+    CSRF_TRUSTED_ORIGINS = os.environ['CSRF_TRUSTED_ORIGINS'].split(',')
+
 
 INSTALLED_APPS = [
     'django.contrib.admin',
