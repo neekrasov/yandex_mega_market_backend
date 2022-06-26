@@ -35,7 +35,8 @@ def validate_name(name, unit):
 
 
 def validate_type(type, shop_unit):
-    if shop_unit.type.lower() != type.lower():
+    if shop_unit is not None and shop_unit.type.lower() != type.lower():
         raise exceptions.ValidationError("when modifying a unit, you cannot change the it type")
     if type.lower() not in ("offer", "category"):
         raise exceptions.ValidationError("the 'type' field can only contain the following values: CATEGORY or OFFER")
+    return type.upper()

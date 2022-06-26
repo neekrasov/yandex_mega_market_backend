@@ -37,7 +37,6 @@ class ShopUnitImportSerializer(serializers.Serializer):
                 price_calculation(last_parent)
         else:
             try:
-                validated_data['type'] = validated_data['type'].upper()
                 shop_unit = ShopUnit.objects.create(**validated_data)
             except IntegrityError:
                 raise exceptions.ValidationError()
@@ -50,10 +49,10 @@ class ShopUnitImportSerializer(serializers.Serializer):
         if parent_id:
             unit['parentId'] = validate_parentId(parent_id)
 
+        unit['type'] = validate_type(unit['type'], shop_unit)
         validate_price(unit['price'], unit['type'])
         validate_date(unit['date'])
         validate_name(unit['name'], shop_unit)
-        validate_type(unit['type'], shop_unit)
         return unit
 
 
