@@ -27,7 +27,7 @@ def validate_date(value):
 
 def validate_name(name, unit):
     another_unit = ShopUnit.objects.get_unit_or_none(name=name)
-    if unit and unit.id == another_unit.id:
+    if unit and unit == another_unit:
         return
     if another_unit:
         raise exceptions.ValidationError('unit with the same name already exists')
