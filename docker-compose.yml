@@ -5,6 +5,7 @@ services:
   db:
     image: postgres:14-alpine
     container_name: db
+    restart: always
     networks:
       - default
     volumes:
@@ -36,7 +37,7 @@ services:
       context: ngnix
       dockerfile: Dockerfile
     container_name: nginx
-    restart: on-failure
+    restart: always
     ports:
       - 80:80
     volumes:
