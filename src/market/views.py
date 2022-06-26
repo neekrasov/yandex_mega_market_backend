@@ -8,9 +8,10 @@ from rest_framework.response import Response
 from rest_framework.status import HTTP_400_BAD_REQUEST, HTTP_404_NOT_FOUND
 
 from src.market.models import ShopUnit
-from src.market.serializers import ShopUnitImportSerializer, ShopUnitDetailSerializer, ShopUnitSalesSerializer, \
+from src.market.serializers import ShopUnitImportSerializer, ShopUnitDetailSerializer, \
     ShopUnitSerializer
 from src.services import exceptions
+from src.services.exceptions import ValidationError
 from src.services.response_status_codes import custom_response
 from src.services.services import price_calculation
 from src.services.validators import validate_date
@@ -77,9 +78,17 @@ class ShopUnitSalesView(ListAPIView):
     serializer_class = ShopUnitSerializer
 
     def get_queryset(self):
-        query = self.request.GET['date']
+        query = self.request.GET.get('date')
+        if query is None:
+            raise ValidationError("query parameter 'date' must be sent")
         date = validate_date(query)
-        return ShopUnit.objects.filter(date__gte=date - timedelta(hours=24), type="OFFER")
+        return ShopUnit.objects.filter(date__gte=date - timedelta(hours=24), date__lte=date,  type="OFFER")
+
+    def get(self, request, *args, **kwargs):
+        try:
+            return self.list(request, *args, **kwargs)
+        except ValidationError as e:
+            return custom_response(HTTP_400_BAD_REQUEST, message=f"Validation Error: {e}")
 
 
 @api_view(http_method_names=['DELETE'])
