@@ -8,6 +8,7 @@ def validate_parentId(parent_id):
     unit = ShopUnit.objects.get_unit_or_none(id=parent_id)
     if unit and (unit.type == 'OFFER' or unit == parent_id):
         raise exceptions.ValidationError("failed parentId")
+    return unit
 
 
 def validate_price(price, type):

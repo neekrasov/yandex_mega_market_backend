@@ -27,7 +27,7 @@ class ShopUnitImportSerializer(serializers.Serializer):
             last_parent = shop_unit.parentId
             shop_unit.date = validated_data['date']
             shop_unit.name = validated_data['name']
-            shop_unit.parentId = ShopUnit.objects.get_unit_or_none(id=validated_data.get('parentId'))
+            shop_unit.parentId = validated_data['parentId']
 
             if shop_unit.type.lower() == 'offer':
                 shop_unit.price = validated_data['price']
@@ -48,7 +48,7 @@ class ShopUnitImportSerializer(serializers.Serializer):
         shop_unit = ShopUnit.objects.get_unit_or_none(id=unit['id'])
 
         if parent_id:
-            validate_parentId(parent_id)
+            unit['parentId'] = validate_parentId(parent_id)
 
         validate_price(unit['price'], unit['type'])
         validate_date(unit['date'])
