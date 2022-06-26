@@ -1,0 +1,49 @@
+version: '3.8'
+
+
+services:
+  db:
+    image: postgres:14-alpine
+    container_name: db
+    networks:
+      - default
+    volumes:
+      - yandex_postgres_data:/var/lib/postgresql/data
+    ports:
+      - '5432:5432'
+    env_file:
+      - .env
+
+
+  web:
+    build: ./
+    container_name: yandex_backend
+    restart: always
+    command: bash entrypoint.sh
+    volumes:
+      - ./src/market/migrations:./src/market/migrations
+      - ./static:/usr/src/yandex_backend/static
+    ports:
+      - '8000:8000'
+    env_file:
+      - .env
+    depends_on:
+      - db
+
+
+  nginx:
+    build:
+      context: ngnix
+      dockerfile: Dockerfile
+    container_name: nginx
+    restart: on-failure
+    ports:
+      - 80:80
+    volumes:
+      - ./static:/static
+    depends_on:
+      - web
+
+
+volumes:
+  yandex_postgres_data:
