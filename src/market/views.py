@@ -10,10 +10,9 @@ from rest_framework.status import HTTP_400_BAD_REQUEST, HTTP_404_NOT_FOUND
 from src.market.models import ShopUnit
 from src.market.serializers import ShopUnitImportSerializer, ShopUnitDetailSerializer, \
     ShopUnitSerializer
-from src.services import exceptions
 from src.services.exceptions import ValidationError
 from src.services.response_status_codes import custom_response
-from src.services.services import price_calculation
+from src.services.services import price_calculation, get_correct_data
 from src.services.validators import validate_date
 
 
@@ -22,47 +21,28 @@ class ShopUnitImportView(CreateAPIView):
     queryset = ShopUnit.objects.all()
 
     def create(self, request, *args, **kwargs):
-        updateDate = request.data.get('updateDate')
 
-        # Валидация на наличие обязательного поля updateDate.
-        if not updateDate:
-            return custom_response(status_code=HTTP_400_BAD_REQUEST,
-                                   message="ValidationError : Update date was not sent")
-
-        items = request.data.get('items', [])
-
-        # Валидация пустого списка items, дублирования id и name.
-        if not items:
-            return custom_response(status_code=HTTP_400_BAD_REQUEST, message="ValidationError : Items list is empty")
-        else:
-            duplicates = dict()
-            for item in items:
-                duplicates[item['id']] = duplicates.get(item['id'], 0) + 1
-                if duplicates[item['id']] > 1:
-                    return custom_response(status_code=HTTP_400_BAD_REQUEST,
-                                           message="ValidationError: Dubplicate 'id' field")
-                duplicates[item['name']] = duplicates.get(item['name'], 0) + 1
-                if duplicates[item['name']] > 1:
-                    return custom_response(status_code=HTTP_400_BAD_REQUEST,
-                                           message="ValidationError: Dubplicate 'name' field")
-                # Обновление даты для каждого юнита.
-                item.update({'date': updateDate})
+        # Получение данных верного формата, для обработки сериализатором.
+        try:
+            data = get_correct_data(request.data)
+        except ValidationError as e:
+            return custom_response(status_code=HTTP_400_BAD_REQUEST, message=f"Validation Error: {e}")
 
         # Передача данных в сериализатор - валидация.
-        serializer = self.get_serializer(data=items, many=True)
+        serializer = self.get_serializer(data=data, many=True)
         try:
             serializer.is_valid(raise_exception=True)
-        except exceptions.ValidationError as e:
+        except ValidationError as e:
             return custom_response(status_code=HTTP_400_BAD_REQUEST, message=f"Validation Error: {e}")
 
         # Сохранение данных
         self.perform_create(serializer)
         headers = self.get_success_headers(serializer.data)
 
-        # Перерасчёт поля price у категорий.
+        # Перерасчёт поля price у измененных категорий.
         changed_categories = set(
             ShopUnit.objects.get_unit_or_none(
-                id=unit["parentId"]) for unit in items if unit["parentId"] is not None)
+                id=unit["parentId"]) for unit in data if unit["parentId"] is not None)
         for category_id in changed_categories:
             price_calculation(category_id)
 
@@ -82,7 +62,7 @@ class ShopUnitSalesView(ListAPIView):
         if query is None:
             raise ValidationError("query parameter 'date' must be sent")
         date = validate_date(query)
-        return ShopUnit.objects.filter(date__gte=date - timedelta(hours=24), date__lte=date,  type="OFFER")
+        return ShopUnit.objects.filter(date__gte=date - timedelta(hours=24), date__lte=date, type="OFFER")
 
     def get(self, request, *args, **kwargs):
         try:
