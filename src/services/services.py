@@ -1,3 +1,5 @@
+from typing import Any
+
 from django.db.models import Avg
 
 from src.market.models import ShopUnit
@@ -17,7 +19,7 @@ def price_calculation(unit: ShopUnit):
         return
 
 
-def get_correct_data(data: dict) -> dict:
+def get_correct_data(data: dict) -> list[Any]:
     updateDate = data.get('updateDate')
 
     # Валидация на наличие обязательного поля updateDate.
