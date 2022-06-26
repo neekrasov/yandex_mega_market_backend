@@ -45,16 +45,15 @@ class ShopUnitImportSerializer(serializers.Serializer):
 
     def validate(self, unit):
         parent_id = unit.get('parentId')
-        price = unit.get('price')
-        name = unit.get('name')
+        shop_unit = ShopUnit.objects.get_unit_or_none(id=unit['id'])
 
         if parent_id:
             validate_parentId(parent_id)
 
-        validate_price(price, unit['type'])
+        validate_price(unit['price'], unit['type'])
         validate_date(unit['date'])
-        validate_name(name, unit)
-        validate_type(unit['type'].lower(), unit['id'])
+        validate_name(unit['name'], shop_unit)
+        validate_type(unit['type'], shop_unit)
         return unit
 
 
