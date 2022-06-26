@@ -32,3 +32,11 @@ def validate_name(name, unit):
         return
     if another_unit:
         raise exceptions.ValidationError('unit with the same name already exists')
+
+
+def validate_type(type, id):
+    shop_unit = ShopUnit.objects.get_unit_or_none(id=id)
+    if shop_unit.type.lower() != type:
+        raise exceptions.ValidationError("when modifying an existing category, it is not possible to change its type")
+    if type not in ("offer", "category"):
+        raise exceptions.ValidationError("the 'type' field can only contain the following values: CATEGORY or OFFER")

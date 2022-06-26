@@ -4,7 +4,7 @@ from rest_framework import serializers
 from src.market.models import ShopUnit
 from src.services import exceptions
 from src.services.services import price_calculation
-from src.services.validators import validate_parentId, validate_price, validate_date, validate_name
+from src.services.validators import validate_parentId, validate_price, validate_date, validate_name, validate_type
 
 
 class ShopUnitSerializer(serializers.ModelSerializer):
@@ -24,14 +24,12 @@ class ShopUnitImportSerializer(serializers.Serializer):
     def create(self, validated_data):
         shop_unit = ShopUnit.objects.get_unit_or_none(id=validated_data.get('id'))
         if shop_unit is not None:
-            if shop_unit.type != validated_data['type']:
-                raise serializers.ValidationError()
             last_parent = shop_unit.parentId
             shop_unit.date = validated_data['date']
             shop_unit.name = validated_data['name']
             shop_unit.parentId = ShopUnit.objects.get_unit_or_none(id=validated_data.get('parentId'))
 
-            if shop_unit.type == 'OFFER':
+            if shop_unit.type.lower() == 'offer':
                 shop_unit.price = validated_data['price']
 
             shop_unit.save()
@@ -39,6 +37,7 @@ class ShopUnitImportSerializer(serializers.Serializer):
                 price_calculation(last_parent)
         else:
             try:
+                validated_data['type'] = validated_data['type'].upper()
                 shop_unit = ShopUnit.objects.create(**validated_data)
             except IntegrityError:
                 raise exceptions.ValidationError()
@@ -55,6 +54,7 @@ class ShopUnitImportSerializer(serializers.Serializer):
         validate_price(price, unit['type'])
         validate_date(unit['date'])
         validate_name(name, unit)
+        validate_type(unit['type'].lower(), unit['id'])
         return unit
 
 
